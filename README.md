@@ -1,3 +1,15 @@
+## 環境構築
+
+* Node.js をインストールする
+
+## 開発
+
+```
+npm install # 一度だけ
+npm run dev
+```
+
+
 ## Usage
 
 Those templates dependencies are maintained via [pnpm](https://pnpm.io) via `pnpm up -Lri`.
