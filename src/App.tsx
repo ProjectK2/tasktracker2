@@ -1,13 +1,15 @@
-import { Component, createSignal, Index, onCleanup } from 'solid-js';
+import { Component, createContext, createSignal, Index, onCleanup, useContext } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import Comp from './Comp';
 
 const App: Component = () => {
   return (
     <>
       <h1>Task Tracker 2</h1>
       <Clock />
-      <TaskTracker />
+      <TaskTrackerProvider>
+        <TaskTracker />
+      </TaskTrackerProvider>
+
     </>
   );
 };
@@ -47,7 +49,9 @@ type State = {
   finishedTasks: Task[],
 }
 
-const TaskTracker = () => {
+const TaskTrackerContext = createContext();
+
+const TaskTrackerProvider = (props) => {
   const now = new Date();
   const initialState: State = {
     currentTask: {
@@ -75,39 +79,69 @@ const TaskTracker = () => {
     }));
     console.log(state);
   };
+
+  const val = [state, startNextTask];
+  return (
+    <TaskTrackerContext.Provider value={val}>{props.children}</TaskTrackerContext.Provider>
+  )
+};
+
+const TaskTracker = () => {
   return (
     <>
       <div>task tracking</div>
 
-      <div>
-        <h2>現在のタスク</h2>
-        <div>
-          <span>{state.currentTask.category}</span>＞
-          <span>{state.currentTask.title}</span>：
-          <span>{state.currentTask.start.toTimeString()}</span>
-        </div>
-      </div>
-      <div>
-        <h2>次のタスク</h2>
-        <Index each={CategoryAndTitle}>
-          {(a, i) => {
-            const [cat, tit] = a();
-            return (<li>
-              <button onclick={() => startNextTask(cat, tit)}>{cat}＞{tit}</button>
-            </li>);
-          }
-          }
-        </Index>
-      </div>
-      <div>
-        <h2>終わったタスク</h2>
-        <Index each={state.finishedTasks}>{(task, i) =>
-          <li>{i}: {task().category}＞{task().title}</li>
-        }
-        </Index>
-      </div>
+      <CurrentTask />
+      <NextTask />
+      <FinishedTask />
     </>
   )
+}
+
+const CurrentTask = () => {
+  const [state, _]: any = useContext(TaskTrackerContext);
+  return (
+    <div>
+      <h2>現在のタスク</h2>
+      <div>
+        <span>{state.currentTask.category}</span>＞
+        <span>{state.currentTask.title}</span>：
+        <span>{state.currentTask.start.toTimeString()}</span>
+      </div>
+    </div>
+
+  )
+}
+
+const NextTask = () => {
+  const [state, startNextTask]: any = useContext(TaskTrackerContext);
+  return (
+    <div>
+      <h2>次のタスク</h2>
+      <Index each={CategoryAndTitle}>
+        {(a, i) => {
+          const [cat, tit] = a();
+          return (<li>
+            <button onclick={() => startNextTask(cat, tit)}>{cat}＞{tit}</button>
+          </li>);
+        }
+        }
+      </Index>
+    </div>
+  );
+}
+
+const FinishedTask = () => {
+  const [state, _]: any = useContext(TaskTrackerContext);
+  return (
+    <div>
+      <h2>終わったタスク</h2>
+      <Index each={state.finishedTasks}>{(task, i) =>
+        <li>{i}: {task().category}＞{task().title}</li>
+      }
+      </Index>
+    </div>
+  );
 }
 
 export default App;
