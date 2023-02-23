@@ -1,6 +1,6 @@
 import { Component, createContext, createSignal, Index, onCleanup, useContext, For } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { dateToReadableTimeString, msecToReadableString, msecToReadableStringJp } from './util';
+import { dateToReadableTimeString, msecToReadableString, msecToReadableStringJp, toKey } from './util';
 
 const App: Component = () => {
   return (
@@ -45,24 +45,52 @@ const CategoryAndTitle: [string, string][] = [
   ["休憩", "休憩"],
 ]
 
-type State = {
-  currentTask: Task,
-  finishedTasks: Task[],
+class State {
+  currentTask: Task = {
+    start: new Date(),
+    finish: undefined,
+    category: "休憩",
+    title: "休憩",
+  };
+  finishedTasks: Task[] = [];
+  date = new Date();
+
+  save = () => {
+    const key = toKey(new Date());
+    localStorage.setItem(key, JSON.stringify(this));
+    console.log("Saved", { key, val: JSON.stringify(this) });
+  };
+
+}
+
+const loadState = (date: Date): State => {
+  const key = toKey(date);
+  const val = localStorage.getItem(key);
+  let s = new State();
+  if (val === null) {
+    return s;
+  }
+  try {
+    let json = JSON.parse(val);
+    json.currentTask.start = new Date(json.currentTask.start);
+    for (let i = 0; i < json.finishedTasks.length; i++) {
+      json.finishedTasks[i].start = new Date(json.finishedTasks[i].start);
+      json.finishedTasks[i].finish = new Date(json.finishedTasks[i].finish);
+    }
+    s.currentTask = json.currentTask;
+    s.finishedTasks = json.finishedTasks;
+    console.log("Loaded", { key, val: s });
+    return s;
+  } catch {
+    console.log("loaded, but failed to parse: ", val);
+    return s;
+  }
 }
 
 const TaskTrackerContext = createContext();
 
 const TaskTrackerProvider = (props) => {
-  const now = new Date();
-  const initialState: State = {
-    currentTask: {
-      start: now,
-      finish: now,
-      category: "休憩",
-      title: "休憩"
-    },
-    finishedTasks: [],
-  }
+  const initialState: State = loadState(new Date());
   const [state, setState] = createStore(initialState);
 
   const startNextTask = (category: string, title: string) => {
@@ -78,6 +106,7 @@ const TaskTrackerProvider = (props) => {
       s.finishedTasks = [...s.finishedTasks, currentTask];
       s.currentTask = nextTask;
     }));
+    state.save();
     console.log(state);
   };
 
@@ -184,5 +213,6 @@ const FinishedTask = () => {
     </div>
   );
 }
+
 
 export default App;

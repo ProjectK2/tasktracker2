@@ -25,3 +25,10 @@ export const msecToReadableStringJp = (msec: number): string => {
     }
     return s;
 }
+
+export const toKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    return `${year}/${month}/${day}`;
+}
