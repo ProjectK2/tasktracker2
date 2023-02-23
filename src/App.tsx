@@ -1,5 +1,6 @@
-import { Component, createContext, createSignal, Index, onCleanup, useContext } from 'solid-js';
+import { Component, createContext, createSignal, Index, onCleanup, useContext, For } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
+import { dateToReadableTimeString, msecToReadableString } from './util';
 
 const App: Component = () => {
   return (
@@ -15,11 +16,11 @@ const App: Component = () => {
 };
 
 const Clock = () => {
-  const [t, setT] = createSignal((new Date()).toTimeString());
-  const timer = setInterval(() => setT((new Date()).toTimeString()), 1000);
+  const [t, setT] = createSignal(new Date());
+  const timer = setInterval(() => setT(new Date()), 1000);
   onCleanup(() => clearInterval(timer));
   return (
-    <div>{t()}</div>
+    <h2>{t().getFullYear()}/{t().getMonth()}/{t().getDate()} {dateToReadableTimeString(t())}</h2>
   );
 }
 
@@ -80,7 +81,9 @@ const TaskTrackerProvider = (props) => {
     console.log(state);
   };
 
-  const val = [state, startNextTask];
+  const val = [state, {
+    startNextTask: startNextTask,
+  }];
   return (
     <TaskTrackerContext.Provider value={val}>{props.children}</TaskTrackerContext.Provider>
   )
@@ -89,8 +92,6 @@ const TaskTrackerProvider = (props) => {
 const TaskTracker = () => {
   return (
     <>
-      <div>task tracking</div>
-
       <CurrentTask />
       <NextTask />
       <FinishedTask />
@@ -99,7 +100,7 @@ const TaskTracker = () => {
 }
 
 const CurrentTask = () => {
-  const [state, _]: any = useContext(TaskTrackerContext);
+  const [state,]: any = useContext(TaskTrackerContext);
   return (
     <div>
       <h2>現在のタスク</h2>
@@ -114,7 +115,7 @@ const CurrentTask = () => {
 }
 
 const NextTask = () => {
-  const [state, startNextTask]: any = useContext(TaskTrackerContext);
+  const [, { startNextTask }]: any = useContext(TaskTrackerContext);
   return (
     <div>
       <h2>次のタスク</h2>
@@ -132,14 +133,43 @@ const NextTask = () => {
 }
 
 const FinishedTask = () => {
-  const [state, _]: any = useContext(TaskTrackerContext);
+  const [state,]: any = useContext(TaskTrackerContext);
   return (
     <div>
       <h2>終わったタスク</h2>
-      <Index each={state.finishedTasks}>{(task, i) =>
-        <li>{i}: {task().category}＞{task().title}</li>
-      }
-      </Index>
+      <table>
+        <thead>
+          <tr>
+            <th>カテゴリ</th>
+            <th>タスク</th>
+            <th>開始</th>
+            <th>終了</th>
+            <th>時間</th>
+          </tr>
+        </thead>
+        <tbody>
+          <For each={state.finishedTasks}>{
+            (task: Task, i) => {
+              let finish = task.finish;
+              let start = task.start;
+              let diff = finish.getTime() - start.getTime();
+              let diffs = msecToReadableString(diff);
+              return (<>
+                <tr>
+                  <td>{task.category}</td>
+                  <td>{task.title}</td>
+                  <td>{dateToReadableTimeString(start)}</td>
+                  <td>{dateToReadableTimeString(finish)}</td>
+                  <td>{diffs}</td>
+                  {/* <td>{msecToReadableString(task.finish.getTime() - task.start.getTime())}</td> */}
+                </tr>
+              </>);
+            }
+          }
+          </For>
+
+        </tbody>
+      </table>
     </div>
   );
 }
