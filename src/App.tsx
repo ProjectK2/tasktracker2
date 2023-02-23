@@ -5,12 +5,13 @@ import { dateToReadableTimeString, msecToReadableString, msecToReadableStringJp,
 const App: Component = () => {
   return (
     <>
-      <h1 class="title">Task Tracker 2</h1>
-      <Clock />
-      <TaskTrackerProvider>
-        <TaskTracker />
-      </TaskTrackerProvider>
-
+      <div class="section">
+        <h1 class="title">Task Tracker 2</h1>
+        <Clock />
+        <TaskTrackerProvider>
+          <TaskTracker />
+        </TaskTrackerProvider>
+      </div>
     </>
   );
 };
@@ -144,14 +145,21 @@ const CurrentTask = () => {
   const timer = setInterval(() => setT(new Date()), 1000);
   onCleanup(() => clearInterval(timer));
   return (
-    <div class="block">
+    <div class="block box">
       <h2 class="subtitle">現在のタスク</h2>
-      <div>
-        <span>{state.currentTask.category}</span>＞
-        <span>{state.currentTask.title}</span>：
-        <span>{dateToReadableTimeString(state.currentTask.start)}</span>：
-        <span>{msecToReadableStringJp(t().getTime() - state.currentTask.start.getTime())}</span>
-      </div>
+      <p>
+        <span class="button">{state.currentTask.category}</span>
+        <span class="button is-info is-light">{state.currentTask.title}</span>
+        <span class="icon-text">
+          <span class="icon is-medium"><i class="fas fa-lg fa-sharp fa-regular fa-clock"></i></span>
+          <span>{dateToReadableTimeString(state.currentTask.start)}</span>
+        </span>
+        <span class="icon-text">
+          <span class="icon is-medium"><i class="fas fa-lg fa-sharp fa-regular fa-stopwatch"></i></span>
+          <span>{msecToReadableStringJp(t().getTime() - state.currentTask.start.getTime())}</span>
+        </span>
+
+      </p>
     </div>
 
   )
@@ -160,19 +168,22 @@ const CurrentTask = () => {
 const NextTask = () => {
   const [, { startNextTask }]: any = useContext(TaskTrackerContext);
   return (
-    <div class="column block">
+    <div class="column block box">
       <h2 class="subtitle">次のタスク</h2>
-      <Index each={CategoryAndTitle}>
-        {(a, i) => {
-          const [cat, tit] = a();
-          return (<li>
-            <button onclick={() => startNextTask(cat, tit)} class="button">
-              {cat}＞{tit}
-            </button>
-          </li>);
-        }
-        }
-      </Index>
+      <ul>
+        <Index each={CategoryAndTitle}>
+          {(a, i) => {
+            const [cat, tit] = a();
+            return (<li>
+              <span class="tag is-medium">{cat}</span>
+              <button onclick={() => startNextTask(cat, tit)} class="button">
+                {tit}
+              </button>
+            </li>);
+          }
+          }
+        </Index>
+      </ul>
     </div>
   );
 }
@@ -180,7 +191,7 @@ const NextTask = () => {
 const FinishedTask = () => {
   const [state, { clearAllTasks }]: any = useContext(TaskTrackerContext);
   return (
-    <div class="column block">
+    <div class="column block box">
       <h2 class="subtitle">終わったタスク</h2>
       <table class="table">
         <thead class="thead">
@@ -214,7 +225,7 @@ const FinishedTask = () => {
 
         </tbody>
       </table>
-      <button onclick={() => clearAllTasks()}>タスクのクリア</button>
+      <button onclick={() => clearAllTasks()} class="button is-danger">タスクのクリア</button>
     </div>
   );
 }
