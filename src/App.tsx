@@ -5,7 +5,7 @@ import { dateToReadableTimeString, msecToReadableString, msecToReadableStringJp,
 const App: Component = () => {
   return (
     <>
-      <h1>Task Tracker 2</h1>
+      <h1 class="title">Task Tracker 2</h1>
       <Clock />
       <TaskTrackerProvider>
         <TaskTracker />
@@ -20,7 +20,7 @@ const Clock = () => {
   const timer = setInterval(() => setT(new Date()), 1000);
   onCleanup(() => clearInterval(timer));
   return (
-    <h2>{t().getFullYear()}/{t().getMonth()}/{t().getDate()} {dateToReadableTimeString(t())}</h2>
+    <h2 class="subtitle">{t().getFullYear()}/{t().getMonth()}/{t().getDate()} {dateToReadableTimeString(t())}</h2>
   );
 }
 
@@ -129,8 +129,11 @@ const TaskTracker = () => {
   return (
     <>
       <CurrentTask />
-      <NextTask />
-      <FinishedTask />
+      <hr></hr>
+      <div class="columns">
+        <NextTask />
+        <FinishedTask />
+      </div>
     </>
   )
 }
@@ -141,8 +144,8 @@ const CurrentTask = () => {
   const timer = setInterval(() => setT(new Date()), 1000);
   onCleanup(() => clearInterval(timer));
   return (
-    <div>
-      <h2>現在のタスク</h2>
+    <div class="block">
+      <h2 class="subtitle">現在のタスク</h2>
       <div>
         <span>{state.currentTask.category}</span>＞
         <span>{state.currentTask.title}</span>：
@@ -157,13 +160,15 @@ const CurrentTask = () => {
 const NextTask = () => {
   const [, { startNextTask }]: any = useContext(TaskTrackerContext);
   return (
-    <div>
-      <h2>次のタスク</h2>
+    <div class="column block">
+      <h2 class="subtitle">次のタスク</h2>
       <Index each={CategoryAndTitle}>
         {(a, i) => {
           const [cat, tit] = a();
           return (<li>
-            <button onclick={() => startNextTask(cat, tit)}>{cat}＞{tit}</button>
+            <button onclick={() => startNextTask(cat, tit)} class="button">
+              {cat}＞{tit}
+            </button>
           </li>);
         }
         }
@@ -175,10 +180,10 @@ const NextTask = () => {
 const FinishedTask = () => {
   const [state, { clearAllTasks }]: any = useContext(TaskTrackerContext);
   return (
-    <div>
-      <h2>終わったタスク</h2>
-      <table>
-        <thead>
+    <div class="column block">
+      <h2 class="subtitle">終わったタスク</h2>
+      <table class="table">
+        <thead class="thead">
           <tr>
             <th>カテゴリ</th>
             <th>タスク</th>
@@ -187,7 +192,7 @@ const FinishedTask = () => {
             <th>時間</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="tbody">
           <For each={state.finishedTasks}>{
             (task: Task, i) => {
               let finish = task.finish;
