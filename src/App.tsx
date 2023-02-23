@@ -1,6 +1,6 @@
 import { Component, createContext, createSignal, Index, onCleanup, useContext, For } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { dateToReadableTimeString, msecToReadableString } from './util';
+import { dateToReadableTimeString, msecToReadableString, msecToReadableStringJp } from './util';
 
 const App: Component = () => {
   return (
@@ -81,8 +81,15 @@ const TaskTrackerProvider = (props) => {
     console.log(state);
   };
 
+  const clearAllTasks = () => {
+    setState(produce((s) => {
+      s.finishedTasks = [];
+    }))
+  }
+
   const val = [state, {
     startNextTask: startNextTask,
+    clearAllTasks: clearAllTasks,
   }];
   return (
     <TaskTrackerContext.Provider value={val}>{props.children}</TaskTrackerContext.Provider>
@@ -101,13 +108,17 @@ const TaskTracker = () => {
 
 const CurrentTask = () => {
   const [state,]: any = useContext(TaskTrackerContext);
+  const [t, setT] = createSignal(new Date());
+  const timer = setInterval(() => setT(new Date()), 1000);
+  onCleanup(() => clearInterval(timer));
   return (
     <div>
       <h2>現在のタスク</h2>
       <div>
         <span>{state.currentTask.category}</span>＞
         <span>{state.currentTask.title}</span>：
-        <span>{state.currentTask.start.toTimeString()}</span>
+        <span>{dateToReadableTimeString(state.currentTask.start)}</span>：
+        <span>{msecToReadableStringJp(t().getTime() - state.currentTask.start.getTime())}</span>
       </div>
     </div>
 
@@ -133,7 +144,7 @@ const NextTask = () => {
 }
 
 const FinishedTask = () => {
-  const [state,]: any = useContext(TaskTrackerContext);
+  const [state, { clearAllTasks }]: any = useContext(TaskTrackerContext);
   return (
     <div>
       <h2>終わったタスク</h2>
@@ -161,7 +172,6 @@ const FinishedTask = () => {
                   <td>{dateToReadableTimeString(start)}</td>
                   <td>{dateToReadableTimeString(finish)}</td>
                   <td>{diffs}</td>
-                  {/* <td>{msecToReadableString(task.finish.getTime() - task.start.getTime())}</td> */}
                 </tr>
               </>);
             }
@@ -170,6 +180,7 @@ const FinishedTask = () => {
 
         </tbody>
       </table>
+      <button onclick={() => clearAllTasks()}>タスクのクリア</button>
     </div>
   );
 }
