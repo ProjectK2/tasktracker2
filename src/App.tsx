@@ -10,6 +10,7 @@ const App: Component = () => {
         <Clock />
         <TaskTrackerProvider>
           <TaskTracker />
+          <Exporter />
         </TaskTrackerProvider>
       </div>
     </>
@@ -159,7 +160,7 @@ const TaskTracker = () => {
 }
 
 const TimeChart = () => {
-  const [state,]: any = useContext(TaskTrackerContext);
+  const [state,] = useContext(TaskTrackerContext) as [State, any];
 
   const [t, setT] = createSignal(new Date());
   const timer = setInterval(() => setT(new Date()), 1000);
@@ -211,15 +212,8 @@ const TimeChart = () => {
     </>)
 }
 
-const TimeChartFrame = (props) => {
-  return (
-    <>
-    </>
-  );
-}
-
 const CurrentTask = () => {
-  const [state,]: any = useContext(TaskTrackerContext);
+  const [state,] = useContext(TaskTrackerContext) as [State, any];
   const [t, setT] = createSignal(new Date());
   const timer = setInterval(() => setT(new Date()), 1000);
   onCleanup(() => clearInterval(timer));
@@ -245,7 +239,7 @@ const CurrentTask = () => {
 }
 
 const NextTask = () => {
-  const [, { startNextTask }]: any = useContext(TaskTrackerContext);
+  const [, { startNextTask }]: any = useContext(TaskTrackerContext) as [State, any];
   return (
     <div class="column block box">
       <h2 class="subtitle">次のタスク</h2>
@@ -268,7 +262,7 @@ const NextTask = () => {
 }
 
 const FinishedTask = () => {
-  const [state, { clearAllTasks }]: any = useContext(TaskTrackerContext);
+  const [state, { clearAllTasks }] = useContext(TaskTrackerContext) as [State, any];
   return (
     <div class="column block box">
       <h2 class="subtitle">終わったタスク</h2>
@@ -309,5 +303,31 @@ const FinishedTask = () => {
   );
 }
 
+const Exporter = () => {
+  const [state,] = useContext(TaskTrackerContext) as [State, any];
+  const exportData = (event) => {
+    const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    window.open(url);
+  };
+  const exportDataAll = (event) => {
+    let json = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      const v = JSON.parse(localStorage.getItem(k));
+      json[k] = v;
+    }
+    json[toKey(state.date)] = state;
+    const blob = new Blob([JSON.stringify(json)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    window.open(url);
+  };
+  return (
+    <div class="block box">
+      <button class="button" onclick={exportData}>Export Data</button>
+      <button class="button" onclick={exportDataAll}>Export All</button>
+    </div>
+  )
+}
 
 export default App;
