@@ -1,4 +1,4 @@
-import { Component, createContext, createSignal, Index, onCleanup, useContext, For } from 'solid-js';
+import { Component, createContext, createSignal, Index, onCleanup, useContext, For, createEffect } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
 import { dateToReadableTimeString, msecToReadableString, msecToReadableStringJp, toKey } from './util';
 
@@ -49,15 +49,15 @@ const CategoryAndTitle: [string, string][] = [
 const categoryToColor = (category: string): string => {
   switch (category) {
     case "会議":
-      return "#F17245"
-    case "作業":
       return "#68A8D6";
+    case "作業":
+      return "#42f5c2";
     case "雑務":
       return "#B2B2B2";
     case "その他":
-      return "#F3EFE7";
+      return "#f5c542";
     case "休憩":
-      return "#FB8AA4";
+      return "#F17245"
     default:
       return "#000000";
   }
@@ -127,7 +127,6 @@ const TaskTrackerProvider = (props) => {
       s.currentTask = nextTask;
     }));
     state.save();
-    console.log(state);
   };
 
   const clearAllTasks = () => {
@@ -163,39 +162,38 @@ const TimeChart = () => {
   const [state,]: any = useContext(TaskTrackerContext);
 
   const [t, setT] = createSignal(new Date());
-  const timer = setInterval(() => setT(new Date()), 60 * 1000);
+  const timer = setInterval(() => setT(new Date()), 1000);
   onCleanup(() => clearInterval(timer));
 
   const width = 1200, height = 150, rectHeight = 135;
-  const rxy = 15;
-  const tasks: Task[] = [state.currentTask, ...state.finishedTasks];
-  const startHour = tasks.reduce((prev, cur: Task, i, arr) => Math.min(prev, cur.start.getHours()), 25);
+  const rxy = 16, rxy2 = 8;
+  const tasks = (): Task[] => [state.currentTask, ...state.finishedTasks];
+  const startHour = tasks().reduce((prev, cur: Task, i, arr) => Math.min(prev, cur.start.getHours()), 25);
   const oneHourWidth = width / (24 - startHour);
 
-  const calcX = (h: number, m: number) => ((h - startHour) * 60 + m) * oneHourWidth / 60;
-  const calcXFromDate = (d: Date) => calcX(d.getHours(), d.getMinutes());
-  const currentX = calcXFromDate(t());
+  const calcX = (h: number, m: number, s: number) => ((h - startHour) * 60 * 60 + m * 60 + s) * oneHourWidth / 60 / 60;
+  const calcXFromDate = (d: Date) => calcX(d.getHours(), d.getMinutes(), d.getSeconds());
+  const currentX = () => calcXFromDate(t());
   return (
     <>
       <figure class="image container">
         <svg width={width} height={height}>
           {/* タスクの表示 */}
-          <For each={tasks}>
-            {(t, i) => {
-              const x0 = calcXFromDate(t.start);
-              console.log("start", t.start, "finish", t.finish);
-              const x1 = calcXFromDate((t.finish == null || t.finish === t.start) ? new Date() : t.finish);
-              const col = categoryToColor(t.category);
+          <For each={tasks()}>
+            {(task, i) => {
+              const x0 = () => calcXFromDate(task.start);
+              const x1 = () => calcXFromDate((task.finish == null || task.finish === task.start) ? t() : task.finish);
+              const col = () => categoryToColor(task.category);
               return (
                 <>
-                  <rect x={x0} y="0" width={x1 - x0} height={rectHeight} rx={rxy} ry={rxy} stroke={col} fill={col} />
+                  <rect x={x0()} y="0" width={x1() - x0()} height={rectHeight} rx={rxy2} ry={rxy2} stroke="gray" fill={col()} />
                 </>
               );
             }}
           </For>
 
           {/* 外枠＆補助 */}
-          <rect x="0" y="0" width={width} height={rectHeight} rx={rxy} ry={rxy} stroke="black" fill="transparent" />
+          <rect x="2" y="2" width={width - 2} height={rectHeight - 2} rx={rxy} ry={rxy} stroke="black" stroke-width={4} fill="transparent" />
           <For each={[...Array(25).keys()].filter(x => startHour <= x)}>
             {(h, i) => {
               const x = (h - startHour) * oneHourWidth;
@@ -207,10 +205,17 @@ const TimeChart = () => {
               );
             }}
           </For>
-          <line x1={currentX} y1={0} x2={currentX} y2={rectHeight} stroke="black" stroke-width={3} />
+          <line x1={currentX() + 3} y1={0} x2={currentX()} y2={rectHeight} stroke="black" stroke-width={3} />
         </svg>
       </figure>
     </>)
+}
+
+const TimeChartFrame = (props) => {
+  return (
+    <>
+    </>
+  );
 }
 
 const CurrentTask = () => {
