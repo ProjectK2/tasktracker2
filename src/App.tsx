@@ -46,6 +46,23 @@ const CategoryAndTitle: [string, string][] = [
   ["休憩", "休憩"],
 ]
 
+const categoryToColor = (category: string): string => {
+  switch (category) {
+    case "会議":
+      return "#F17245"
+    case "作業":
+      return "#68A8D6";
+    case "雑務":
+      return "#B2B2B2";
+    case "その他":
+      return "#F3EFE7";
+    case "休憩":
+      return "#FB8AA4";
+    default:
+      return "#000000";
+  }
+}
+
 class State {
   currentTask: Task = {
     start: new Date(),
@@ -59,7 +76,7 @@ class State {
   save = () => {
     const key = toKey(new Date());
     localStorage.setItem(key, JSON.stringify(this));
-    console.log("Saved", { key, val: JSON.stringify(this) });
+    console.log("Saved", { key, raw: this, val: JSON.stringify(this) });
   };
 
 }
@@ -74,12 +91,14 @@ const loadState = (date: Date): State => {
   try {
     let json = JSON.parse(val);
     json.currentTask.start = new Date(json.currentTask.start);
+    json.currentTask.finish = json.currentTask.finish == null ? null : new Date(json.currentTask.finish);
     for (let i = 0; i < json.finishedTasks.length; i++) {
       json.finishedTasks[i].start = new Date(json.finishedTasks[i].start);
       json.finishedTasks[i].finish = new Date(json.finishedTasks[i].finish);
     }
     s.currentTask = json.currentTask;
     s.finishedTasks = json.finishedTasks;
+    s.date = new Date(json.date);
     console.log("Loaded", { key, val: s });
     return s;
   } catch {
@@ -99,7 +118,7 @@ const TaskTrackerProvider = (props) => {
     const currentTask: Task = { ...state.currentTask, finish: now };
     const nextTask: Task = {
       start: now,
-      finish: now,
+      finish: undefined,
       category: category,
       title: title,
     };
@@ -129,6 +148,7 @@ const TaskTrackerProvider = (props) => {
 const TaskTracker = () => {
   return (
     <>
+      <TimeChart></TimeChart>
       <CurrentTask />
       <hr></hr>
       <div class="columns">
@@ -137,6 +157,60 @@ const TaskTracker = () => {
       </div>
     </>
   )
+}
+
+const TimeChart = () => {
+  const [state,]: any = useContext(TaskTrackerContext);
+
+  const [t, setT] = createSignal(new Date());
+  const timer = setInterval(() => setT(new Date()), 60 * 1000);
+  onCleanup(() => clearInterval(timer));
+
+  const width = 1200, height = 150, rectHeight = 135;
+  const rxy = 15;
+  const tasks: Task[] = [state.currentTask, ...state.finishedTasks];
+  const startHour = tasks.reduce((prev, cur: Task, i, arr) => Math.min(prev, cur.start.getHours()), 25);
+  const oneHourWidth = width / (24 - startHour);
+
+  const calcX = (h: number, m: number) => ((h - startHour) * 60 + m) * oneHourWidth / 60;
+  const calcXFromDate = (d: Date) => calcX(d.getHours(), d.getMinutes());
+  const currentX = calcXFromDate(t());
+  return (
+    <>
+      <figure class="image container">
+        <svg width={width} height={height}>
+          {/* タスクの表示 */}
+          <For each={tasks}>
+            {(t, i) => {
+              const x0 = calcXFromDate(t.start);
+              console.log("start", t.start, "finish", t.finish);
+              const x1 = calcXFromDate((t.finish == null || t.finish === t.start) ? new Date() : t.finish);
+              const col = categoryToColor(t.category);
+              return (
+                <>
+                  <rect x={x0} y="0" width={x1 - x0} height={rectHeight} rx={rxy} ry={rxy} stroke={col} fill={col} />
+                </>
+              );
+            }}
+          </For>
+
+          {/* 外枠＆補助 */}
+          <rect x="0" y="0" width={width} height={rectHeight} rx={rxy} ry={rxy} stroke="black" fill="transparent" />
+          <For each={[...Array(25).keys()].filter(x => startHour <= x)}>
+            {(h, i) => {
+              const x = (h - startHour) * oneHourWidth;
+              return (
+                <>
+                  <line x1={x} y1={0} x2={x} y2={rectHeight} stroke="gray" stroke-width={1} stroke-dasharray="6" />
+                  <text x={x} y={rectHeight + 15}>{h}</text>
+                </>
+              );
+            }}
+          </For>
+          <line x1={currentX} y1={0} x2={currentX} y2={rectHeight} stroke="black" stroke-width={3} />
+        </svg>
+      </figure>
+    </>)
 }
 
 const CurrentTask = () => {
@@ -194,22 +268,22 @@ const FinishedTask = () => {
     <div class="column block box">
       <h2 class="subtitle">終わったタスク</h2>
       <table class="table">
-        <thead class="thead">
+        <thead class="thead has-text-right">
           <tr>
-            <th>カテゴリ</th>
-            <th>タスク</th>
-            <th>開始</th>
-            <th>終了</th>
-            <th>時間</th>
+            <th class="has-text-right">カテゴリ</th>
+            <th class="has-text-right">タスク</th>
+            <th class="has-text-right">開始</th>
+            <th class="has-text-right">終了</th>
+            <th class="has-text-right">時間</th>
           </tr>
         </thead>
-        <tbody class="tbody">
+        <tbody class="tbody has-text-right">
           <For each={state.finishedTasks}>{
             (task: Task, i) => {
               let finish = task.finish;
               let start = task.start;
               let diff = finish.getTime() - start.getTime();
-              let diffs = msecToReadableString(diff);
+              let diffs = msecToReadableStringJp(diff);
               return (<>
                 <tr>
                   <td>{task.category}</td>
