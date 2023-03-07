@@ -74,6 +74,7 @@ class State {
     title: "休憩",
   };
   finishedTasks: Task[] = [];
+  reservingTasks: Task[] = [];
   date = new Date();
 
   save = () => {
@@ -101,6 +102,12 @@ const loadState = (date: Date): State => {
     }
     s.currentTask = json.currentTask;
     s.finishedTasks = json.finishedTasks;
+
+    for (let i = 0; i < json.reservingTasks.length; i++) {
+      json.reservingTasks[i].start = new Date(json.reservingTasks[i].start);
+    }
+    s.reservingTasks = json.reservingTasks;
+
     s.date = new Date(json.date);
     console.log("Loaded", { key, val: s });
     return s;
@@ -131,16 +138,52 @@ const TaskTrackerProvider = (props) => {
     }));
     state.save();
   };
+  const startNextReservingTask = () => {
+    if (state.reservingTasks.length == 0) {
+      console.log("予約中のタスクがないのに予約中のタスクが開始されようとしている！");
+      return;
+    }
+    const nextTask: Task = state.reservingTasks[0];
+    const currentTask: Task = { ...state.currentTask, finish: nextTask.start };
+    setState(produce((s) => {
+      s.finishedTasks = [...s.finishedTasks, currentTask];
+      s.currentTask = nextTask;
+      s.reservingTasks.shift();
+    }));
+    state.save();
+  };
 
   const clearAllTasks = () => {
     setState(produce((s) => {
       s.finishedTasks = [];
     }))
-  }
+  };
+
+  const reserveTask = (t: Task) => {
+    setState(produce((s) => {
+      s.reservingTasks.push(t);
+      s.reservingTasks.sort((a, b) => a.start.getTime() - b.start.getTime());
+      s.save();
+    }))
+  };
+
+  const removeReservingTask = (i: number) => {
+    setState(
+      produce(
+        (s) => {
+          s.reservingTasks.splice(i, 1);
+          s.save();
+        }
+      )
+    )
+  };
 
   const val = [state, {
-    startNextTask: startNextTask,
-    clearAllTasks: clearAllTasks,
+    startNextTask,
+    startNextReservingTask,
+    clearAllTasks,
+    reserveTask,
+    removeReservingTask,
   }];
   return (
     <TaskTrackerContext.Provider value={val}>{props.children}</TaskTrackerContext.Provider>
@@ -151,8 +194,10 @@ const TaskTracker = () => {
   return (
     <>
       <TimeChart></TimeChart>
-      <CurrentTask />
-      <hr></hr>
+      <div class="columns">
+        <CurrentTask />
+        <ReservingTasks />
+      </div>
       <div class="columns">
         <NextTask />
         <FinishedTask />
@@ -169,7 +214,7 @@ const TimeChart = () => {
   onCleanup(() => clearInterval(timer));
 
   const width = 1200, height = 150, rectHeight = 135;
-  const rxy = 16, rxy2 = 8;
+  const rxy = 16, rxy2 = 16;
   const tasks = (): Task[] => [state.currentTask, ...state.finishedTasks];
   const startHour = tasks().reduce((prev, cur: Task, i, arr) => Math.min(prev, cur.start.getHours()), 25);
   const oneHourWidth = width / (24 - startHour);
@@ -220,7 +265,7 @@ const CurrentTask = () => {
   const timer = setInterval(() => setT(new Date()), 1000);
   onCleanup(() => clearInterval(timer));
   return (
-    <div class="block box">
+    <div class="column block box">
       <h2 class="subtitle">現在のタスク</h2>
       <p>
         <span class="button">{state.currentTask.category}</span>
@@ -237,6 +282,101 @@ const CurrentTask = () => {
       </p>
     </div>
 
+  )
+}
+
+const ReservingTasks = () => {
+  const [reservingCategoryAndTitle, setReservingCategoryAndTitle] = createSignal(CategoryAndTitle[0]);
+  const [reservingTime, setReservingTime] = createSignal("xxxx");
+  const [state, { startNextReservingTask, reserveTask, removeReservingTask }] = useContext(TaskTrackerContext) as [State, any];
+
+
+  const [t, setT] = createSignal(new Date());
+  const checkAndStartReservingTask = () => {
+    const now = t();
+    setT(new Date());
+    if (state.reservingTasks.length == 0 || now < state.reservingTasks[0].start) {
+      return;
+    }
+    startNextReservingTask();
+  };
+  const timer = setInterval(checkAndStartReservingTask, 10000);
+  onCleanup(() => clearInterval(timer));
+
+  const addReservingTask = () => {
+    const [category, title] = reservingCategoryAndTitle();
+    const reservingTimeNum = parseInt(reservingTime());
+    const [hour, minute] = [Math.floor(reservingTimeNum / 100), reservingTimeNum % 100];
+
+    const now = new Date();
+    const start = new Date();
+    if (isNaN(reservingTimeNum) || minute >= 60 || hour >= 24) {
+      console.log("invalid time!");
+      return;
+    }
+    start.setHours(hour);
+    start.setMinutes(minute);
+    start.setSeconds(0);
+    start.setMilliseconds(0);
+    if (now > start) {
+      console.log("過去の予約をしようとしている！");
+      return;
+    }
+    const task: Task = {
+      start: start,
+      finish: undefined,
+      category: category,
+      title: title,
+    };
+    reserveTask(task);
+  };
+  const deleteReservingTask = (i: number) => {
+    removeReservingTask(i);
+  };
+
+  return (
+    <div class="column block box">
+      <h2 class="subtitle">予約</h2>
+      <table class="table">
+        <thead class="thead has-text-right">
+          <tr>
+            <th class="has-text-right">カテゴリ</th>
+            <th class="has-text-right">タスク</th>
+            <th class="has-text-right">開始</th>
+            <th class="has-text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody class="tbody has-text-right">
+          <For each={state.reservingTasks}>{
+            (task: Task, i) => {
+              let start = task.start;
+              return (<>
+                <tr>
+                  <td>{task.category}</td>
+                  <td>{task.title}</td>
+                  <td>{dateToReadableTimeString(start)}</td>
+                  <td><button class='button is-danger is-light is-small' onclick={() => deleteReservingTask(i())} >削除</button></td>
+                </tr>
+              </>);
+            }
+          }
+          </For>
+        </tbody>
+      </table>
+      <div class="field is-grouped">
+        <select class="select" onchange={(e) => setReservingCategoryAndTitle(e.currentTarget.value.split("/") as [string, string])}>
+          <Index each={CategoryAndTitle}>
+            {(a, i) => {
+              const [cat, tit] = a();
+              return (<option value={`${cat}/${tit}`}>{cat}　＞　{tit}</option>);
+            }
+            }
+          </Index>
+        </select>
+        <input type="text" id="reservingTime" placeholder='開始予定時刻' class="input is-primary" onchange={(e) => setReservingTime(e.currentTarget.value)}></input>
+        <button class="button" onclick={addReservingTask}>追加</button>
+      </div>
+    </div>
   )
 }
 
