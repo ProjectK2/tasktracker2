@@ -287,7 +287,7 @@ const CurrentTask = () => {
 
 const ReservingTasks = () => {
   const [reservingCategoryAndTitle, setReservingCategoryAndTitle] = createSignal(CategoryAndTitle[0]);
-  const [reservingTime, setReservingTime] = createSignal("xxxx");
+  const [reservingTime, setReservingTime] = createSignal("");
   const [state, { startNextReservingTask, reserveTask, removeReservingTask }] = useContext(TaskTrackerContext) as [State, any];
 
 
@@ -329,6 +329,7 @@ const ReservingTasks = () => {
       title: title,
     };
     reserveTask(task);
+    setReservingTime("");
   };
   const deleteReservingTask = (i: number) => {
     removeReservingTask(i);
@@ -373,7 +374,7 @@ const ReservingTasks = () => {
             }
           </Index>
         </select>
-        <input type="text" id="reservingTime" placeholder='開始予定時刻' class="input is-primary" onchange={(e) => setReservingTime(e.currentTarget.value)}></input>
+        <input type="number" id="reservingTime" placeholder='開始予定時刻' class="input is-primary" onchange={(e) => setReservingTime(e.currentTarget.value)} value={reservingTime()}></input>
         <button class="button" onclick={addReservingTask}>追加</button>
       </div>
     </div>
